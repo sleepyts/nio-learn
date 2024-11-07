@@ -38,6 +38,7 @@ public class User implements Serializable {
         }catch (IOException e){
 
         }
+
     }
     public void clear(){
         try{
