@@ -23,22 +23,25 @@ public class Server {
     private Selector selector;
 
     @Getter
-    private final Set<User> onlineUsers=new HashSet<>();
+    private final Set<User> onlineUsers = new HashSet<>();
 
     private final TerminalInputProcessor.CommandProcessor commandProcessor;
     private final TerminalInputProcessor.Commands commands;
-    private List<String> serverCommandsAndMan;
-    private Server(){
-        commandProcessor=new TerminalInputProcessor.CommandProcessor();
-        commands=new TerminalInputProcessor.Commands();
+    private final List<String> serverCommandsAndMan;
+
+    private Server() {
+        commandProcessor = new TerminalInputProcessor.CommandProcessor();
+        commands = new TerminalInputProcessor.Commands();
         commandProcessor.registerCommands(commands);
-        serverCommandsAndMan=commands.genCmdHelp();
+        serverCommandsAndMan = commands.genCmdHelp();
     }
-    Server(String _host,int _port){
+
+    Server(String _host, int _port) {
         this();
-        host=_host;
-        port=_port;
+        host = _host;
+        port = _port;
     }
+
     public void start() throws Exception {
         selector = Selector.open();
         ServerSocketChannel serverSocket = ServerSocketChannel.open();
@@ -46,7 +49,7 @@ public class Server {
         serverSocket.configureBlocking(false);
         serverSocket.register(selector, SelectionKey.OP_ACCEPT);
 
-        System.out.println("Server success opening at "+host+":"+port);
+        System.out.println("Server success opening at " + host + ":" + port);
 
 
         while (true) {
@@ -76,39 +79,39 @@ public class Server {
         }
     }
 
-    private  void handleRegister(Selector selector, ServerSocketChannel serverSocket) throws IOException {
+    private void handleRegister(Selector selector, ServerSocketChannel serverSocket) throws IOException {
         SocketChannel client = serverSocket.accept();
         client.configureBlocking(false);
         SelectionKey registerKey = client.register(selector, SelectionKey.OP_READ);
 
-        User user = new User(RandomUtil.randomString(10), registerKey,this);
+        User user = new User(RandomUtil.randomString(10), registerKey, this);
         registerKey.attach(user);
         onlineUsers.add(user);
-        for (String cmd:serverCommandsAndMan)
+        for (String cmd : serverCommandsAndMan)
             user.receiveMesFromServer(cmd);
-        broadCast(String.format("User online: [%s]\n",user.getName()));
+        broadCast(String.format("User online: [%s]\n", user.getName()));
     }
 
-    private  void handleMes(SelectionKey key) throws Exception {
+    private void handleMes(SelectionKey key) throws Exception {
         SocketChannel client = (SocketChannel) key.channel();
         ByteBuffer buffer = ByteBuffer.allocate(1024);
         int byteRead = client.read(buffer);
-        if(byteRead==-1){
-            broadCast("Client disconnected: " + client.getRemoteAddress()+"\n");
+        if (byteRead == -1) {
+            broadCast("Client disconnected: " + client.getRemoteAddress() + "\n");
             key.cancel();
             client.close();
             return;
         }
         buffer.flip();
-        User user= (User) key.attachment();
+        User user = (User) key.attachment();
         String input = StandardCharsets.UTF_8.decode(buffer).toString();
-        commandProcessor.handleInput(input,commands,user);
+        commandProcessor.handleInput(input, commands, user);
     }
 
-    private void broadCast(String mes){
+    private void broadCast(String mes) {
         ByteBuffer wrap = ByteBuffer.wrap(mes.getBytes(StandardCharsets.UTF_8));
         for (SelectionKey key : selector.keys()) {
-            if (key.isValid()&&key.channel() instanceof SocketChannel) {
+            if (key.isValid() && key.channel() instanceof SocketChannel) {
                 SocketChannel clientChannel = (SocketChannel) key.channel();
                 try {
                     clientChannel.write(wrap);
@@ -126,14 +129,14 @@ public class Server {
         }
     }
 
-    public List<String> getAllUserName(){
+    public List<String> getAllUserName() {
         return onlineUsers
                 .stream()
                 .map(User::getName)
                 .collect(Collectors.toList());
     }
 
-    public void removeUser(String userName){
-        onlineUsers.removeIf(u->u.getName().equals(userName));
+    public void removeUser(String userName) {
+        onlineUsers.removeIf(u -> u.getName().equals(userName));
     }
 }

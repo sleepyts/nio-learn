@@ -3,6 +3,7 @@ package org.ts;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -16,6 +17,7 @@ import java.util.Objects;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
+@Slf4j
 public class User implements Serializable {
     private String name;
     private SelectionKey key;
@@ -35,7 +37,7 @@ public class User implements Serializable {
         try{
             SocketChannel channel = (SocketChannel) key.channel();
             channel.write(ByteBuffer.wrap(mes.getBytes(StandardCharsets.UTF_8)));
-        }catch (IOException e){
+        }catch (IOException ignored){
 
         }
 
@@ -43,7 +45,7 @@ public class User implements Serializable {
     public void exit(){
         try{
             key.channel().close();
-        }catch (IOException e) {
+        }catch (IOException ignored) {
 
         }
         belongServer.removeUser(name);
@@ -52,8 +54,7 @@ public class User implements Serializable {
 
     public void broadcast(String mes){
         belongServer.getOnlineUsers().forEach(u->{
-            if (!Objects.equals(u.getName(), name))
-                u.receiveMesFromServer(String.format("broadcast mes from user [%s]: %s",name,mes));
+            u.receiveMesFromServer(String.format("[%s]: %s",name,mes));
         });
 
     }

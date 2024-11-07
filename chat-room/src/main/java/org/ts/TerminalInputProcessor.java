@@ -39,6 +39,8 @@ public class TerminalInputProcessor {
 
         @CommandHandler("send")
         public void send(User user,String[] args){
+            String sendToUser=args[0];
+            String sendMes=args[1];
 
         }
 
