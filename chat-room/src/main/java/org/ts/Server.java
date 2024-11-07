@@ -1,6 +1,7 @@
 package org.ts;
 
 import cn.hutool.core.util.RandomUtil;
+import lombok.Getter;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -21,27 +22,31 @@ public class Server {
     private int port;
     private Selector selector;
 
-
+    @Getter
     private final Set<User> onlineUsers=new HashSet<>();
 
     private final TerminalInputProcessor.CommandProcessor commandProcessor;
     private final TerminalInputProcessor.Commands commands;
+    private List<String> serverCommandsAndMan;
     private Server(){
         commandProcessor=new TerminalInputProcessor.CommandProcessor();
         commands=new TerminalInputProcessor.Commands();
         commandProcessor.registerCommands(commands);
+        serverCommandsAndMan=commands.genCmdHelp();
     }
     Server(String _host,int _port){
         this();
         host=_host;
         port=_port;
     }
-    public  void start() throws Exception {
+    public void start() throws Exception {
         selector = Selector.open();
         ServerSocketChannel serverSocket = ServerSocketChannel.open();
         serverSocket.bind(new InetSocketAddress(host, port));
         serverSocket.configureBlocking(false);
         serverSocket.register(selector, SelectionKey.OP_ACCEPT);
+
+        System.out.println("Server success opening at "+host+":"+port);
 
 
         while (true) {
@@ -79,10 +84,12 @@ public class Server {
         User user = new User(RandomUtil.randomString(10), registerKey,this);
         registerKey.attach(user);
         onlineUsers.add(user);
+        for (String cmd:serverCommandsAndMan)
+            user.receiveMesFromServer(cmd);
         broadCast(String.format("User online: [%s]\n",user.getName()));
     }
 
-    private  void handleMes( SelectionKey key) throws Exception {
+    private  void handleMes(SelectionKey key) throws Exception {
         SocketChannel client = (SocketChannel) key.channel();
         ByteBuffer buffer = ByteBuffer.allocate(1024);
         int byteRead = client.read(buffer);
@@ -124,5 +131,9 @@ public class Server {
                 .stream()
                 .map(User::getName)
                 .collect(Collectors.toList());
+    }
+
+    public void removeUser(String userName){
+        onlineUsers.removeIf(u->u.getName().equals(userName));
     }
 }

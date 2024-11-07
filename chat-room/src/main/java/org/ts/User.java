@@ -40,21 +40,22 @@ public class User implements Serializable {
         }
 
     }
-    public void clear(){
-        try{
-            SocketChannel channel = (SocketChannel) key.channel();
-            channel.write(ByteBuffer.wrap("u001B[2J\\u001B[H".getBytes(StandardCharsets.UTF_8)));
-        }catch (IOException e){
-
-        }
-    }
     public void exit(){
         try{
             key.channel().close();
         }catch (IOException e) {
 
         }
+        belongServer.removeUser(name);
         key.cancel();
+    }
+
+    public void broadcast(String mes){
+        belongServer.getOnlineUsers().forEach(u->{
+            if (!Objects.equals(u.getName(), name))
+                u.receiveMesFromServer(String.format("broadcast mes from user [%s]: %s",name,mes));
+        });
+
     }
     private static final long serialVersionUID = 1L;
 }

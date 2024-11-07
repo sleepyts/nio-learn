@@ -5,10 +5,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.lang.reflect.Method;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class TerminalInputProcessor {
 
@@ -16,16 +13,16 @@ public class TerminalInputProcessor {
     @Target(ElementType.METHOD)
     @interface CommandHandler {
         String value();
+        String man() default "";
     }
 
     static class Commands {
-        @CommandHandler("exit")
+        @CommandHandler(value = "exit",man = "Exit this server")
         public void exit(User user)  {
             user.receiveMesFromServer("Good bye! :)");
             user.exit();
         }
-
-        @CommandHandler("help")
+        @CommandHandler(value = "help",man = "Display all commands, their help, and their descriptions")
         public void help(User user) {
 
         }
@@ -35,12 +32,17 @@ public class TerminalInputProcessor {
             user.receiveMesFromServer(Arrays.toString(args));
         }
 
+        @CommandHandler(value = "bd",man = "Broadcast a message to all online users. Eg:bd [message]")
+        public void broadcast(User user,String[] args) {
+            user.broadcast(args[0]);
+        }
+
         @CommandHandler("send")
         public void send(User user,String[] args){
 
         }
 
-        @CommandHandler("ou")
+        @CommandHandler(value = "ou",man = "Show all online users")
         public void ou(User user){
             List<String> allUserName = user.getBelongServer().getAllUserName();
             for (String userName:allUserName){
@@ -48,13 +50,22 @@ public class TerminalInputProcessor {
             }
         }
 
-        @CommandHandler("whoami")
+
+        @CommandHandler(value = "whoami",man = "Show your username")
         public void whoami(User user){
             user.receiveMesFromServer(user.getName());
         }
-        @CommandHandler("clear")
-        public void clear(User user){
-            user.clear();
+
+        public List<String> genCmdHelp(){
+            Method[] declaredMethods = Commands.class.getDeclaredMethods();
+            List<String> res=new ArrayList<>();
+            for (Method method : declaredMethods) {
+                CommandHandler annotation = method.getAnnotation(CommandHandler.class);
+                if (annotation != null)
+                    res.add(annotation.value()+" :" +annotation.man());
+
+            }
+            return res;
         }
     }
 
