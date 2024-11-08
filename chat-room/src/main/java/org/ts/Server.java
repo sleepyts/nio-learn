@@ -11,11 +11,7 @@ import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
+import java.util.*;
 
 public class Server {
     private String host;
@@ -23,17 +19,16 @@ public class Server {
     private Selector selector;
 
     @Getter
-    private final Set<User> onlineUsers = new HashSet<>();
+    private final Map<String, User> onlineUsers = new HashMap<>();
 
     private final TerminalInputProcessor.CommandProcessor commandProcessor;
     private final TerminalInputProcessor.Commands commands;
-    private final List<String> serverCommandsAndMan;
+
 
     private Server() {
         commandProcessor = new TerminalInputProcessor.CommandProcessor();
         commands = new TerminalInputProcessor.Commands();
         commandProcessor.registerCommands(commands);
-        serverCommandsAndMan = commands.genCmdHelp();
     }
 
     Server(String _host, int _port) {
@@ -83,12 +78,12 @@ public class Server {
         SocketChannel client = serverSocket.accept();
         client.configureBlocking(false);
         SelectionKey registerKey = client.register(selector, SelectionKey.OP_READ);
-
-        User user = new User(RandomUtil.randomString(10), registerKey, this);
+        String userName = RandomUtil.randomString(10);
+        User user = new User(userName,registerKey, this);
         registerKey.attach(user);
-        onlineUsers.add(user);
-        for (String cmd : serverCommandsAndMan)
-            user.receiveMesFromServer(cmd);
+        onlineUsers.put(user.getName(), user);
+        for (String cmd : TerminalInputProcessor.Commands.commandHelp)
+            user.receiveMes(cmd);
         broadCast(String.format("User online: [%s]\n", user.getName()));
     }
 
@@ -96,14 +91,16 @@ public class Server {
         SocketChannel client = (SocketChannel) key.channel();
         ByteBuffer buffer = ByteBuffer.allocate(1024);
         int byteRead = client.read(buffer);
+        User user = (User) key.attachment();
         if (byteRead == -1) {
             broadCast("Client disconnected: " + client.getRemoteAddress() + "\n");
+            onlineUsers.remove(user.getName());
             key.cancel();
             client.close();
             return;
         }
         buffer.flip();
-        User user = (User) key.attachment();
+
         String input = StandardCharsets.UTF_8.decode(buffer).toString();
         commandProcessor.handleInput(input, commands, user);
     }
@@ -130,13 +127,11 @@ public class Server {
     }
 
     public List<String> getAllUserName() {
-        return onlineUsers
-                .stream()
-                .map(User::getName)
-                .collect(Collectors.toList());
+        return new ArrayList<>(onlineUsers.keySet());
     }
 
     public void removeUser(String userName) {
-        onlineUsers.removeIf(u -> u.getName().equals(userName));
+        onlineUsers.remove(userName);
+        broadCast(String.format("[%s] has left\n",userName));
     }
 }
